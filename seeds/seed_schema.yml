@@ -1,0 +1,212 @@
+version: 2
+
+seeds:
+  - name: orders
+    description: >-
+      Northwind order headers. Grain: 1 row = 1 order. Column-level documentation is
+      declared on the corresponding source in `models/sources.yml`.
+    columns:
+      - name: order_id
+        data_type: integer
+      - name: customer_id
+        data_type: varchar(5)
+      - name: employee_id
+        data_type: integer
+      - name: order_date
+        data_type: date
+      - name: required_date
+        data_type: date
+      - name: shipped_date
+        data_type: date
+      - name: ship_via
+        data_type: integer
+      - name: freight
+        data_type: numeric(10,2)
+      - name: ship_name
+        data_type: varchar(40)
+      - name: ship_address
+        data_type: varchar(60)
+      - name: ship_city
+        data_type: varchar(15)
+      - name: ship_region
+        data_type: varchar(15)
+      - name: ship_postal_code
+        data_type: varchar(10)
+      - name: ship_country
+        data_type: varchar(15)
+
+  - name: order_details
+    description: >-
+      Northwind order lines. Grain: 1 row = 1 product within 1 order. This is the grain of
+      the fact table `fct_order_details`.
+    columns:
+      - name: order_id
+        data_type: integer
+      - name: product_id
+        data_type: integer
+      - name: unit_price
+        data_type: numeric(10,2)
+      - name: quantity
+        data_type: integer
+      - name: discount
+        data_type: numeric(4,2)
+
+  - name: customers
+    description: Northwind customers (companies buying from Northwind).
+    columns:
+      - name: customer_id
+        data_type: varchar(5)
+      - name: company_name
+        data_type: varchar(40)
+      - name: contact_name
+        data_type: varchar(30)
+      - name: contact_title
+        data_type: varchar(30)
+      - name: address
+        data_type: varchar(60)
+      - name: city
+        data_type: varchar(15)
+      - name: region
+        data_type: varchar(15)
+      - name: postal_code
+        data_type: varchar(10)
+      - name: country
+        data_type: varchar(15)
+      - name: phone
+        data_type: varchar(24)
+      - name: fax
+        data_type: varchar(24)
+
+  - name: products
+    description: Northwind product master data.
+    columns:
+      - name: product_id
+        data_type: integer
+      - name: product_name
+        data_type: varchar(40)
+      - name: supplier_id
+        data_type: integer
+      - name: category_id
+        data_type: integer
+      - name: quantity_per_unit
+        data_type: varchar(20)
+      - name: unit_price
+        data_type: numeric(10,2)
+      - name: units_in_stock
+        data_type: integer
+      - name: units_on_order
+        data_type: integer
+      - name: reorder_level
+        data_type: integer
+      - name: discontinued
+        data_type: integer
+
+  - name: categories
+    description: Northwind product categories.
+    columns:
+      - name: category_id
+        data_type: integer
+      - name: category_name
+        data_type: varchar(15)
+      - name: description
+        data_type: varchar(255)
+
+  - name: suppliers
+    description: Northwind product suppliers.
+    columns:
+      - name: supplier_id
+        data_type: integer
+      - name: company_name
+        data_type: varchar(40)
+      - name: contact_name
+        data_type: varchar(30)
+      - name: contact_title
+        data_type: varchar(30)
+      - name: address
+        data_type: varchar(60)
+      - name: city
+        data_type: varchar(15)
+      - name: region
+        data_type: varchar(15)
+      - name: postal_code
+        data_type: varchar(10)
+      - name: country
+        data_type: varchar(15)
+      - name: phone
+        data_type: varchar(24)
+      - name: fax
+        data_type: varchar(24)
+      - name: homepage
+        data_type: varchar(255)
+
+  - name: shippers
+    description: Northwind shipping carriers.
+    columns:
+      - name: shipper_id
+        data_type: integer
+      - name: company_name
+        data_type: varchar(40)
+      - name: phone
+        data_type: varchar(24)
+
+  - name: employees
+    description: Northwind employees, including the `reports_to` manager hierarchy.
+    columns:
+      - name: employee_id
+        data_type: integer
+      - name: last_name
+        data_type: varchar(20)
+      - name: first_name
+        data_type: varchar(10)
+      - name: title
+        data_type: varchar(30)
+      - name: title_of_courtesy
+        data_type: varchar(25)
+      - name: birth_date
+        data_type: date
+      - name: hire_date
+        data_type: date
+      - name: address
+        data_type: varchar(60)
+      - name: city
+        data_type: varchar(15)
+      - name: region
+        data_type: varchar(15)
+      - name: postal_code
+        data_type: varchar(10)
+      - name: country
+        data_type: varchar(15)
+      - name: home_phone
+        data_type: varchar(24)
+      - name: extension
+        data_type: varchar(4)
+      - name: notes
+        data_type: varchar(500)
+      - name: reports_to
+        data_type: integer
+
+  - name: date
+    description: >-
+      Locally generated calendar, 1996-01-01 to 1998-12-31. Grain: 1 row = 1 day.
+      Feeds the `dim_date` dimension.
+    columns:
+      - name: date_day
+        data_type: date
+      - name: year
+        data_type: integer
+      - name: quarter
+        data_type: integer
+      - name: month
+        data_type: integer
+      - name: month_name
+        data_type: varchar(9)
+      - name: day_of_week
+        data_type: integer
+      - name: day_of_week_name
+        data_type: varchar(9)
+      - name: day_of_month
+        data_type: integer
+      - name: day_of_year
+        data_type: integer
+      - name: is_weekend
+        data_type: integer
