@@ -1,0 +1,45 @@
+version: 2
+
+exposures:
+
+  - name: northwind_exec_dashboard
+    label: Northwind Executive Dashboard
+    type: dashboard
+    maturity: high
+    url: https://example.com/northwind-exec-dashboard
+    description: >-
+      Executive revenue dashboard (top-line revenue, evolution over time, performance by
+      category, country, seller and shipper). Consumes the conformed marts and the wide
+      order-level table for reporting.
+    depends_on:
+      - ref('fct_order_details')
+      - ref('obt_order_details')
+      - ref('dim_customer')
+      - ref('dim_product')
+      - ref('dim_employee')
+      - ref('dim_shipper')
+      - ref('dim_date')
+    owner:
+      name: Data Team
+      email: data@northwind.example
+
+  - name: northwind_analyses
+    label: Northwind Ad-hoc Analyses
+    type: analysis
+    maturity: medium
+    description: >-
+      Set of ad-hoc SQL analyses shipped with the project (revenue by month, cumulative
+      revenue, country / category / shipper / seller breakdowns, category market share and
+      top-10 products). They query the marts directly.
+    depends_on:
+      - analysis('ca_par_mois')
+      - analysis('ca_cumule_par_mois')
+      - analysis('ca_par_pays')
+      - analysis('ca_par_categorie')
+      - analysis('ca_par_transporteur')
+      - analysis('ca_par_vendeur')
+      - analysis('part_de_marche_categorie')
+      - analysis('top_10_produits')
+    owner:
+      name: Data Team
+      email: data@northwind.example

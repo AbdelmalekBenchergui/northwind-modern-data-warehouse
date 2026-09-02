@@ -1,0 +1,216 @@
+version: 2
+
+sources:
+  - name: northwind_raw
+    description: >-
+      Raw Northwind operational tables, loaded from the CSV files in `seeds/` into the
+      `raw` schema by `dbt seed`. This is the source of truth ingested by the staging layer;
+      tables are intentionally thin copies of the upstream files (no transformations applied).
+    loader: seed
+    schema: raw
+    tables:
+      - name: customers
+        description: "Customers (companies buying from Northwind). Grain: 1 row = 1 customer."
+        columns:
+          - name: customer_id
+            description: Natural key of the customer (5-character code).
+          - name: company_name
+            description: Company display name.
+          - name: contact_name
+            description: Primary contact person.
+          - name: contact_title
+            description: Business title of the contact person.
+          - name: address
+            description: Street address.
+          - name: city
+            description: City.
+          - name: region
+            description: Region; may be null.
+          - name: postal_code
+            description: Postal / ZIP code.
+          - name: country
+            description: Country.
+          - name: phone
+            description: Primary telephone number.
+          - name: fax
+            description: Fax number; may be null.
+
+      - name: categories
+        description: "Product categories. Grain: 1 row = 1 category."
+        columns:
+          - name: category_id
+            description: Natural key of the category.
+          - name: category_name
+            description: Category name.
+          - name: description
+            description: Free-text category description (documentation only).
+
+      - name: suppliers
+        description: "Product suppliers. Grain: 1 row = 1 supplier."
+        columns:
+          - name: supplier_id
+            description: Natural key of the supplier.
+          - name: company_name
+            description: Supplier company name.
+          - name: contact_name
+            description: Primary contact person.
+          - name: contact_title
+            description: Business title of the contact person.
+          - name: address
+            description: Street address.
+          - name: city
+            description: City.
+          - name: region
+            description: Region; may be null.
+          - name: postal_code
+            description: Postal / ZIP code.
+          - name: country
+            description: Country.
+          - name: phone
+            description: Primary telephone number.
+          - name: fax
+            description: Fax number; may be null.
+          - name: homepage
+            description: Supplier website URL; may be null.
+
+      - name: shippers
+        description: "Shipping carriers. Grain: 1 row = 1 shipper."
+        columns:
+          - name: shipper_id
+            description: Natural key of the shipper.
+          - name: company_name
+            description: Shipper company name.
+          - name: phone
+            description: Primary telephone number.
+
+      - name: employees
+        description: "Employees, including the `reports_to` hierarchy. Grain: 1 row = 1 employee."
+        columns:
+          - name: employee_id
+            description: Natural key of the employee.
+          - name: last_name
+            description: Employee's surname.
+          - name: first_name
+            description: Employee's given name.
+          - name: title
+            description: Employee's job title.
+          - name: title_of_courtesy
+            description: Form of address for the employee.
+          - name: birth_date
+            description: Date of birth.
+          - name: hire_date
+            description: Date of hire.
+          - name: address
+            description: Street address.
+          - name: city
+            description: City.
+          - name: region
+            description: Region; may be null.
+          - name: postal_code
+            description: Postal / ZIP code.
+          - name: country
+            description: Country.
+          - name: home_phone
+            description: Personal telephone number.
+          - name: extension
+            description: Phone extension (string to preserve leading zeros).
+          - name: notes
+            description: Free-text HR notes.
+          - name: reports_to
+            description: Natural key of the manager's `employee_id`; null at the top of the hierarchy.
+
+      - name: products
+        description: "Product master data. Grain: 1 row = 1 product."
+        columns:
+          - name: product_id
+            description: Natural key of the product.
+          - name: product_name
+            description: Product display name.
+          - name: supplier_id
+            description: Natural key of the supplier.
+          - name: category_id
+            description: Natural key of the category.
+          - name: quantity_per_unit
+            description: Packaging / quantity description, e.g. "10 boxes x 30 bags".
+          - name: unit_price
+            description: List price of one unit.
+          - name: units_in_stock
+            description: Current number of units in stock.
+          - name: units_on_order
+            description: Number of units currently on order.
+          - name: reorder_level
+            description: Stock level below which the product should be reordered.
+          - name: discontinued
+            description: Flag (0 = active, 1 = discontinued).
+
+      - name: orders
+        description: "Order headers. Grain: 1 row = 1 order."
+        columns:
+          - name: order_id
+            description: Natural key of the order.
+          - name: customer_id
+            description: Natural key of the customer.
+          - name: employee_id
+            description: Natural key of the employee (seller).
+          - name: order_date
+            description: Date the order was placed.
+          - name: required_date
+            description: Date by which the order is required.
+          - name: shipped_date
+            description: Date the order was shipped; null while in process.
+          - name: ship_via
+            description: Natural key of the shipper (carrier).
+          - name: freight
+            description: Shipping cost charged on the order.
+          - name: ship_name
+            description: Recipient name on the shipping label.
+          - name: ship_address
+            description: Delivery street address.
+          - name: ship_city
+            description: Delivery city.
+          - name: ship_region
+            description: Delivery region; may be null.
+          - name: ship_postal_code
+            description: Delivery postal / ZIP code.
+          - name: ship_country
+            description: Delivery country.
+
+      - name: order_details
+        description: "Order lines. Grain: 1 row = 1 product within 1 order."
+        columns:
+          - name: order_id
+            description: Natural key of the order.
+          - name: product_id
+            description: Natural key of the product.
+          - name: unit_price
+            description: Unit price applied on the line.
+          - name: quantity
+            description: Number of units ordered.
+          - name: discount
+            description: Discount rate applied to the line, between 0 and 1.
+
+      - name: date
+        description: >-
+          Calendar table generated locally, covering 1996-01-01 to 1998-12-31.
+          Grain: 1 row = 1 day.
+        columns:
+          - name: date_day
+            description: Calendar day (unique).
+          - name: year
+            description: Calendar year.
+          - name: quarter
+            description: Calendar quarter (1-4).
+          - name: month
+            description: Calendar month (1-12).
+          - name: month_name
+            description: Full month name, e.g. "January".
+          - name: day_of_week
+            description: Day of week (1 = Monday ... 7 = Sunday).
+          - name: day_of_week_name
+            description: Full weekday name, e.g. "Monday".
+          - name: day_of_month
+            description: Day of the month (1-31).
+          - name: day_of_year
+            description: Day of the year (1-366).
+          - name: is_weekend
+            description: Flag (0 = weekday, 1 = Saturday or Sunday).

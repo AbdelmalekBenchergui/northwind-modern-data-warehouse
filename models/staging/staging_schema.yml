@@ -1,0 +1,141 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: >-
+      Staging view over the raw `northwind_raw.customers` source. Thin, 1:1 rename with no
+      business transformation; types are cast in `stg_orders` / `stg_products` where needed.
+      Downstream of it: `dim_customer` and the `snap_customers` snapshot.
+    columns:
+      - name: customer_id
+        description: Natural key of the customer. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
+
+  - name: stg_categories
+    description: "Staging view over the raw `northwind_raw.categories` source. Grain: 1 row = 1 category."
+    columns:
+      - name: category_id
+        description: Natural key of the category. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
+
+  - name: stg_suppliers
+    description: "Staging view over the raw `northwind_raw.suppliers` source. Grain: 1 row = 1 supplier."
+    columns:
+      - name: supplier_id
+        description: Natural key of the supplier. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
+
+  - name: stg_shippers
+    description: "Staging view over the raw `northwind_raw.shippers` source. Grain: 1 row = 1 shipper."
+    columns:
+      - name: shipper_id
+        description: Natural key of the shipper. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
+
+  - name: stg_employees
+    description: >-
+      Staging view over the raw `northwind_raw.employees` source, including the
+      `reports_to` hierarchy used to build `dim_employee.manager_key` / `manager_name`.
+    columns:
+      - name: employee_id
+        description: Natural key of the employee. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
+
+  - name: stg_products
+    description: >-
+      Staging view over the raw `northwind_raw.products` source. `unit_price` is cast to
+      `numeric(10,2)`. Foreign keys to suppliers and categories are verified by tests.
+    columns:
+      - name: product_id
+        description: Natural key of the product. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
+      - name: supplier_id
+        description: Natural key of the supplier. Tested `not_null` and `relationships` to `stg_suppliers`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_suppliers')
+                field: supplier_id
+      - name: category_id
+        description: Natural key of the category. Tested `not_null` and `relationships` to `stg_categories`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_categories')
+                field: category_id
+
+  - name: stg_orders
+    description: >-
+      Staging view over the raw `northwind_raw.orders` source. `order_date`, `required_date`
+      and `shipped_date` are cast to `date`; `freight` to `numeric(10,2)`. Referential
+      integrity to customers, employees and shippers is verified by tests.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [order_id]
+    columns:
+      - name: order_id
+        description: Natural key of the order. Tested `not_null` (uniqueness at the model level).
+        tests: [not_null]
+      - name: customer_id
+        description: Natural key of the customer. Tested `not_null` and `relationships` to `stg_customers`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: employee_id
+        description: Natural key of the employee (seller). Tested `not_null` and `relationships` to `stg_employees`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_employees')
+                field: employee_id
+      - name: ship_via
+        description: Natural key of the shipper. Tested `not_null` and `relationships` to `stg_shippers`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_shippers')
+                field: shipper_id
+
+  - name: stg_order_details
+    description: >-
+      Staging view over the raw `northwind_raw.order_details` source. Grain: 1 row = 1
+      product within 1 order. `unit_price` is cast to `numeric(10,2)` and `discount` to
+      `numeric(4,2)`. This is the source of the revenue calculation in `fct_order_details`.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [order_id, product_id]
+    columns:
+      - name: order_id
+        description: Natural key of the order. Tested `not_null` and `relationships` to `stg_orders`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: product_id
+        description: Natural key of the product. Tested `not_null` and `relationships` to `stg_products`.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_products')
+                field: product_id
+
+  - name: stg_date
+    description: >-
+      Staging view over the raw `northwind_raw.date` calendar source. Grain: 1 row = 1 day,
+      covering 1996-01-01 to 1998-12-31. Feeds the `dim_date` dimension.
+    columns:
+      - name: date_day
+        description: Calendar day. Tested `unique` and `not_null`.
+        tests: [unique, not_null]
