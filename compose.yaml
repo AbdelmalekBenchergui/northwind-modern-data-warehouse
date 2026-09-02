@@ -1,0 +1,174 @@
+x-airflow-common: &airflow-common
+  build:
+    context: ./airflow
+    dockerfile: Dockerfile
+  image: northwind-airflow:2.10.3
+  restart: unless-stopped
+  environment: &airflow-common-env
+    AIRFLOW_UID: "1000"
+    AIRFLOW_GID: "0"
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/0
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CELERY__WORKER_CONCURRENCY: "2"
+    AIRFLOW__CORE__FERNET_KEY: "ZzUIRhr8yNjuYzJ9Rh2jnFayc3vWHmDQc9t8hIx4JOU="
+    AIRFLOW__WEBSERVER__SECRET_KEY: "northwind-airflow-secret"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/scripts:/opt/airflow/scripts
+    - ./scripts:/opt/airflow/project-scripts
+    - ./seeds:/opt/airflow/seeds
+    - ./models:/opt/airflow/models
+    - ./snapshots:/opt/airflow/snapshots
+    - ./analyses:/opt/airflow/analyses
+    - ./macros:/opt/airflow/macros
+    - ./dbt_project.yml:/opt/airflow/dbt_project.yml:ro
+    - ./packages.yml:/opt/airflow/packages.yml:ro
+    - ./target:/opt/airflow/target
+    - ./data:/data
+    - ./data:/opt/airflow/data
+    - ./airflow/profiles:/opt/airflow/profiles
+    - ./airflow/logs:/opt/airflow/logs
+  networks:
+    - northwind
+
+services:
+  superset:
+    build:
+      context: ./docker
+    container_name: superset_northwind
+    restart: unless-stopped
+    environment:
+      SUPERSET_SECRET_KEY: "northwind-dev-secret-change-me"
+      SUPERSET_LOAD_EXAMPLES: "no"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin"
+      ADMIN_EMAIL: "admin@northwind.example"
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8088/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    networks:
+      - northwind
+
+  airflow-postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks:
+      - northwind
+
+  airflow-redis:
+    image: redis:7
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks:
+      - northwind
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow_init
+    restart: "no"
+    profiles: ["init"]
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate &&
+        airflow users create \
+          --username admin \
+          --firstname admin --lastname admin \
+          --role Admin \
+          --email admin@northwind.example \
+          --password admin \
+        || echo "admin user exists, continuing" &&
+        airflow connections add superset \
+          --conn-type http \
+          --conn-host superset \
+          --conn-port 8088 \
+          --conn-login admin \
+          --conn-password admin \
+        || echo "superset connection exists" &&
+        bash /opt/airflow/scripts/ensure-dbt-profile.sh
+    networks:
+      - northwind
+    environment:
+      <<: *airflow-common-env
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow_webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    networks:
+      - northwind
+    environment:
+      <<: *airflow-common-env
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow_scheduler
+    command: scheduler
+    networks:
+      - northwind
+    environment:
+      <<: *airflow-common-env
+
+  airflow-worker:
+    <<: *airflow-common
+    container_name: airflow_worker
+    hostname: airflow-worker
+    command: python -m celery --app airflow.executors.celery_executor.app worker --concurrency=2
+    networks:
+      - northwind
+    environment:
+      <<: *airflow-common-env
+
+  airflow-triggerer:
+    <<: *airflow-common
+    container_name: airflow_triggerer
+    command: triggerer
+    networks:
+      - northwind
+    environment:
+      <<: *airflow-common-env
+
+volumes:
+  airflow-postgres-data:
+
+networks:
+  northwind:
+    name: northwind

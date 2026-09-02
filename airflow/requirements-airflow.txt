@@ -1,0 +1,4 @@
+dbt-core==1.12.2
+dbt-duckdb==1.10.0
+duckdb
+faker>=30.0.0
