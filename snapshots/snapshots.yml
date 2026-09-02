@@ -1,0 +1,30 @@
+version: 2
+
+snapshots:
+  - name: snap_customers
+    description: '{{ doc("snap_customers_description") }}'
+    columns:
+      - name: customer_id
+        description: Natural key of the customer; the snapshot `unique_key`.
+      - name: dbt_scd_id
+        description: Unique identifier of each versioned record.
+      - name: dbt_updated_at
+        description: Timestamp of the last change to the record.
+      - name: dbt_valid_from
+        description: Timestamp from which this version is valid.
+      - name: dbt_valid_to
+        description: Timestamp until which this version is valid; `null` for the current version.
+
+  - name: snap_products
+    description: '{{ doc("snap_products_description") }}'
+    columns:
+      - name: product_id
+        description: Natural key of the product; the snapshot `unique_key`.
+      - name: dbt_scd_id
+        description: Unique identifier of each versioned record.
+      - name: dbt_updated_at
+        description: Timestamp of the last change to the record.
+      - name: dbt_valid_from
+        description: Timestamp from which this version is valid.
+      - name: dbt_valid_to
+        description: Timestamp until which this version is valid; `null` for the current version.
