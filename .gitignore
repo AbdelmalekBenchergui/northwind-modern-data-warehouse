@@ -1,0 +1,16 @@
+target/
+dbt_packages/
+logs/
+__pycache__/
+*.pyc
+profiles.yml
+.user.yml
+venv/
+.venv/
+data/
+report/
+airflow/logs/
+airflow/profiles/profiles.yml
+airflow/dags/
+!airflow/
+!airflow/dags/
