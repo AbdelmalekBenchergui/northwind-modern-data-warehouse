@@ -1,0 +1,579 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: >-
+      Conformed customer dimension (Type 1). Built from `stg_customers` with a surrogate
+      `customer_key`. One row per customer. Feed to the reporting / BI layer.
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_customers')
+    columns:
+      - name: customer_key
+        description: '{{ doc("customer_key") }}'
+        data_type: varchar
+        constraints:
+          - type: primary_key
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Natural code of the customer. Declared `unique` alongside the key.
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: company_name
+        description: '{{ doc("company_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: contact_name
+        description: '{{ doc("contact_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: contact_title
+        description: '{{ doc("contact_title") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: address
+        description: '{{ doc("address") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: city
+        description: '{{ doc("city") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: region
+        description: '{{ doc("region") }}'
+        data_type: varchar
+      - name: postal_code
+        description: '{{ doc("postal_code") }}'
+        data_type: varchar
+      - name: country
+        description: '{{ doc("country") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: phone
+        description: '{{ doc("phone") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: fax
+        description: '{{ doc("fax") }}'
+        data_type: varchar
+
+  - name: dim_product
+    description: >-
+      Conformed product dimension (Type 1). Denormalizes the category and supplier
+      attributes (prefixed `category_` / `supplier_`) directly into the dimension so the
+      fact only joins on `product_key`.
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_products')
+    columns:
+      - name: product_key
+        description: '{{ doc("product_key") }}'
+        data_type: varchar
+        constraints:
+          - type: primary_key
+        tests:
+          - unique
+          - not_null
+      - name: product_id
+        description: Natural key of the product. Declared `unique` alongside the key.
+        data_type: integer
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: product_name
+        description: '{{ doc("product_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: quantity_per_unit
+        description: '{{ doc("quantity_per_unit") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: unit_price
+        description: '{{ doc("unit_price") }}'
+        data_type: decimal(10,2)
+        constraints:
+          - type: not_null
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: units_in_stock
+        description: '{{ doc("units_in_stock") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+      - name: units_on_order
+        description: '{{ doc("units_on_order") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: reorder_level
+        description: '{{ doc("reorder_level") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: discontinued
+        description: '{{ doc("discontinued") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: category_id
+        description: Natural key of the category (denormalized).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: category_name
+        description: '{{ doc("category_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: category_description
+        description: '{{ doc("category_description") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_id
+        description: Natural key of the supplier (denormalized).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: supplier_company_name
+        description: '{{ doc("company_name") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_contact_name
+        description: '{{ doc("contact_name") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_contact_title
+        description: '{{ doc("contact_title") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_address
+        description: '{{ doc("address") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_city
+        description: '{{ doc("city") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_region
+        description: '{{ doc("region") }} (denormalized from `suppliers`); may be null.'
+        data_type: varchar
+      - name: supplier_postal_code
+        description: '{{ doc("postal_code") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_country
+        description: '{{ doc("country") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: supplier_phone
+        description: '{{ doc("phone") }} (denormalized from `suppliers`).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+
+  - name: dim_employee
+    description: >-
+      Conformed employee (seller) dimension (Type 1). Self-joins on `reports_to` to expose
+      the manager hierarchy via `manager_key` / `manager_name`.
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_employees')
+      - dbt_utils.expression_is_true:
+          expression: "manager_key is null or manager_key <> employee_key"
+    columns:
+      - name: employee_key
+        description: '{{ doc("employee_key") }}'
+        data_type: varchar
+        constraints:
+          - type: primary_key
+        tests:
+          - unique
+          - not_null
+      - name: employee_id
+        description: Natural key of the employee. Declared `unique` alongside the key.
+        data_type: integer
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: last_name
+        description: '{{ doc("employees_last_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: first_name
+        description: '{{ doc("employees_first_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: title
+        description: '{{ doc("title_employee") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: title_of_courtesy
+        description: '{{ doc("title_of_courtesy") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: birth_date
+        description: '{{ doc("birth_date") }}'
+        data_type: date
+        constraints:
+          - type: not_null
+      - name: hire_date
+        description: '{{ doc("hire_date") }}'
+        data_type: date
+        constraints:
+          - type: not_null
+      - name: address
+        description: '{{ doc("address") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: city
+        description: '{{ doc("city") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: region
+        description: '{{ doc("region") }}'
+        data_type: varchar
+      - name: postal_code
+        description: '{{ doc("postal_code") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: country
+        description: '{{ doc("country") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: home_phone
+        description: '{{ doc("home_phone") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: extension
+        description: '{{ doc("extension") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: notes
+        description: '{{ doc("notes") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: manager_key
+        description: '{{ doc("manager_key") }}'
+        data_type: varchar
+      - name: manager_name
+        description: '{{ doc("manager_name") }}'
+        data_type: varchar
+
+  - name: dim_shipper
+    description: Conformed shipper (carrier) dimension (Type 1). One row per shipper.
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_shippers')
+    columns:
+      - name: shipper_key
+        description: '{{ doc("shipper_key") }}'
+        data_type: varchar
+        constraints:
+          - type: primary_key
+        tests:
+          - unique
+          - not_null
+      - name: shipper_id
+        description: Natural key of the shipper. Declared `unique` alongside the key.
+        data_type: integer
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: company_name
+        description: '{{ doc("company_name") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: phone
+        description: '{{ doc("phone") }}'
+        data_type: varchar
+        constraints:
+          - type: not_null
+
+  - name: dim_date
+    description: >-
+      Conformed calendar dimension covering 1996-01-01 to 1998-12-31. Provides consistent
+      date attributes (`year`, `quarter`, `month`, weekend flag...) for time-based analyses.
+    config:
+      contract:
+        enforced: true
+    tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('stg_date')
+    columns:
+      - name: date_key
+        description: '{{ doc("date_key") }}'
+        data_type: varchar
+        constraints:
+          - type: primary_key
+        tests:
+          - unique
+          - not_null
+      - name: date_day
+        description: Calendar day, unique within the dimension.
+        data_type: date
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+      - name: year
+        description: Calendar year.
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: quarter
+        description: Calendar quarter (1-4).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: month
+        description: Calendar month (1-12).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: month_name
+        description: Full month name, e.g. "January".
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: day_of_week
+        description: Day of week (1 = Monday ... 7 = Sunday).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: day_of_week_name
+        description: Full weekday name, e.g. "Monday".
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: day_of_month
+        description: Day of the month (1-31).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: day_of_year
+        description: Day of the year (1-366).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: is_weekend
+        description: '{{ doc("is_weekend") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+
+  - name: obt_order_details
+    description: >-
+      One-Big-Table (OBT) export of order line items. `dbt_utils.star` is used to
+      denormalize every dimension (`customer_`, `product_`, `employee_`, `shipper_`,
+      `order_date_*`, `required_date_*`, `shipped_date_*` prefixes) onto the fact, so the
+      table is directly consumable by BI tools without joins. Same grain as
+      `fct_order_details`.
+
+  - name: fct_order_details
+    description: >-
+      Order line-item fact. Grain: one row per product within one order. Each row carries
+      the surrogate keys of the customer, product, employee (seller), shipper and the
+      three date dimensions (order / required / shipped), plus the transactional measures
+      `quantity`, `unit_price`, `discount` and computed `revenue`.
+      Additional date-type convenience columns (`order_date`, `required_date`,
+      `shipped_date`) are not part of the contract but are used by analyses and the
+      semantic layer.
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: check
+        expression: "quantity >= 1"
+      - type: check
+        expression: "unit_price >= 0"
+      - type: check
+        expression: "discount between 0 and 1"
+      - type: check
+        expression: "revenue >= 0"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [order_id, product_key]
+      - dbt_utils.expression_is_true:
+          expression: "revenue = round(unit_price * quantity * (1 - discount), 2)"
+    columns:
+      - name: order_details_key
+        description: '{{ doc("order_details_key") }}'
+        data_type: varchar
+        constraints:
+          - type: primary_key
+        tests:
+          - unique
+          - not_null
+      - name: order_id
+        description: Natural key of the order (kept for traceability and grain checks).
+        data_type: integer
+        constraints:
+          - type: not_null
+      - name: customer_key
+        description: '{{ doc("customer_key") }} FK to `dim_customer`.'
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_key
+      - name: product_key
+        description: '{{ doc("product_key") }} FK to `dim_product`.'
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_key
+      - name: employee_key
+        description: '{{ doc("employee_key") }} FK to `dim_employee`.'
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_employee')
+                field: employee_key
+      - name: shipper_key
+        description: '{{ doc("shipper_key") }} FK to `dim_shipper`.'
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_shipper')
+                field: shipper_key
+      - name: order_date_key
+        description: '{{ doc("date_key") }} FK to `dim_date` (order date).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: required_date_key
+        description: '{{ doc("date_key") }} FK to `dim_date` (required date).'
+        data_type: varchar
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: shipped_date_key
+        description: '{{ doc("date_key") }} FK to `dim_date` (shipped date). Null while the order is not yet shipped.'
+        data_type: varchar
+        tests:
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: quantity
+        description: '{{ doc("quantity") }}'
+        data_type: integer
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+      - name: unit_price
+        description: '{{ doc("unit_price") }} (unit price applied on the line).'
+        data_type: decimal(10,2)
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+      - name: discount
+        description: '{{ doc("discount") }}'
+        data_type: decimal(4,2)
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+      - name: revenue
+        description: '{{ doc("revenue") }}'
+        data_type: decimal(18,2)
+        constraints:
+          - type: not_null
+        tests:
+          - not_null
+        meta:
+          metrics:
+            sum: true
